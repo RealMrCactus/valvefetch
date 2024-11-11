@@ -10,7 +10,7 @@ ValveFetch is a lightweight, user-friendly wrapper for SteamCMD that simplifies 
 - 📝 Detailed logging system
 - 💾 Path persistence for recurring downloads
 - 🔄 Batch download support
-- ⚡ Quick server setup and management
+- ⚡ Quick server setup and management (we'll see)
 - 🦀 Written in Rust for optimal performance and safety
 
 ## Installation
