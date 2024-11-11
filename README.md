@@ -85,8 +85,7 @@ valvefetch --path "/games/garrysmod/addons" --save
 ## Requirements
 
 - Rust 1.70+
-- SteamCMD
-- Active Steam account
+- SteamCMD in your path
 
 ## Contributing
 
@@ -107,5 +106,5 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 If you encounter any issues or have questions, please:
 
 1. Check the [FAQ](docs/FAQ.md)
-2. Search existing [issues](https://github.com/yourusername/valvefetch/issues)
+2. Search existing [issues](https://github.com/realmrcactus/valvefetch/issues)
 3. Create a new issue if necessary
