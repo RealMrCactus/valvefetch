@@ -4,12 +4,11 @@ ValveFetch is a lightweight, user-friendly wrapper for SteamCMD that simplifies 
 
 ## Features
 
-- 🔒 Secure Steam account credential management
-- 📦 Automated workshop content downloads
-- 🗂️ Custom installation path configuration
-- 📝 Detailed logging system
-- 💾 Path persistence for recurring downloads
-- 🔄 Batch download support
+- 📦 Automated workshop content downloads 
+- 🗂️ Custom installation path configuration (Not Implemented)
+- 📝 Detailed logging system (Not Implemented)
+- 💾 Path persistence for recurring downloads (Not Implemented)
+- 🔄 Batch download support (Not Implemented)
 - ⚡ Quick server setup and management (we'll see)
 - 🦀 Written in Rust for optimal performance and safety
 
@@ -32,7 +31,7 @@ cargo build --release
 valvefetch --login username
 
 # Download a specific workshop item
-valvefetch --download 123456789 --game garrysmod
+valvefetch --download 123456789
 
 # Set custom installation path
 valvefetch --path "/path/to/addons" --save
@@ -41,6 +40,8 @@ valvefetch --path "/path/to/addons" --save
 ## Configuration
 
 ValveFetch stores its configuration in `~/.config/valvefetch/config.toml` (Linux/macOS) or `%APPDATA%\ValveFetch\config.toml` (Windows).
+
+`May be subject to change`
 
 ```toml
 default_path = "/path/to/addons"
@@ -56,7 +57,6 @@ Usage: valvefetch [OPTIONS] COMMAND [ARGS]...
 Options:
   --login TEXT         Steam username for authentication
   --download INT       Workshop item ID to download
-  --game TEXT         Target game identifier (e.g., garrysmod)
   --path TEXT         Custom installation path
   --save              Save current path as default
   --batch FILE        Path to batch file containing workshop IDs
@@ -69,12 +69,12 @@ Options:
 
 ### Download Single Addon
 ```bash
-valvefetch --login myusername --download 123456789 --game garrysmod
+valvefetch --login myusername --download 123456789
 ```
 
 ### Batch Download
 ```bash
-valvefetch --login myusername --batch addons.txt --game garrysmod
+valvefetch --login myusername --batch addons.txt
 ```
 
 ### Set New Default Path
@@ -84,7 +84,7 @@ valvefetch --path "/games/garrysmod/addons" --save
 
 ## Requirements
 
-- Rust 1.70+
+- Rust 1.80+
 - SteamCMD in your path
 
 ## Contributing
@@ -98,13 +98,13 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Acknowledgments
 
 - Valve Corporation for SteamCMD
-- All contributors who have helped with the project
+- All contributors who have helped with the project (None yet :()
 - The Steam Workshop community
 
 ## Support
 
 If you encounter any issues or have questions, please:
 
-1. Check the [FAQ](docs/FAQ.md)
+1. Check the [FAQ](docs/FAQ.md) (Nonexisting)
 2. Search existing [issues](https://github.com/realmrcactus/valvefetch/issues)
 3. Create a new issue if necessary
