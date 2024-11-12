@@ -1,7 +1,8 @@
 use clap::Parser;
-use std::{io::Error, path::PathBuf, process::{Output, Stdio}};
+use indicatif::ProgressBar;
+use std::{fs::read_to_string, path::PathBuf, process::Stdio};
 use scraper::{Html, Selector};
-use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
+use tokio::{io::AsyncBufReadExt, process::Command};
 
 #[derive(Parser, Debug)]
 #[clap(about = "A SteamCMD wrapper for managing Steam Workshop content")]
@@ -63,6 +64,12 @@ async fn command(download: bool, shop: WorkshopItem, login: String) {
             Command::new("steamcmd")
                 .arg(format!("+login {} +workshop_download_item {:?} {:?}", login, shop.game_id, shop.item_id))
                 .output().await.unwrap();
+        } else if login.is_empty() {
+            Command::new("steamcmd")
+                .arg(format!("+login {} +workshop_download_item {:?} {:?}", "anonymous", shop.game_id, shop.item_id))
+                .output().await.unwrap();
+        } else {
+            panic!("Somethings not right....")
         }
     }
 }
@@ -109,6 +116,24 @@ async fn find_path() -> Result<String, Box<dyn std::error::Error>> {
     }
 }
 
+async fn batch(file: String, shop: WorkshopItem, login: String) {
+    let contents: String = read_to_string(file).expect("!! ERROR READING BATCH FILE TO STRING !!").trim().to_string();
+
+    let mut lines: u64 = 0;
+    
+    for line in contents.lines() {
+        lines += 1;
+    } 
+
+    let bar = ProgressBar::new(lines);
+
+    for line in contents.lines() {
+        bar.inc(1);
+        command(true, shop.clone(), login.clone()).await;
+    }    
+    bar.finish();
+}
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -131,15 +156,26 @@ async fn main() {
         } else {
             println!("Failed to retrieve game ID.");
         }
+        
+        let login_string = args.login.as_ref().unwrap().to_string();
 
-        if args.login.is_none() {
-            command(true, workshop_item, "anonymous".to_string()).await
-        } else if ! args.login.is_none() {
-            let login_string = args.login.as_ref().unwrap().to_string();
-
-            command(true, workshop_item, login_string).await
+        command(true, workshop_item, login_string).await
+    } else if args.batch.is_some() {
+        let mut workshop_item = WorkshopItem {
+            url: String::new(),
+            item_id: 3362207896,
+            game_id: None,
+        };
+        
+        if let Some(game_id) = get_workshop_item(&workshop_item).await {
+            println!("Game ID: {}", game_id);
+            workshop_item.game_id = Some(game_id);
         } else {
-            panic!("What!? How!?");
+            println!("Failed to retrieve game ID.");
         }
+        
+        let login_string = args.login.as_ref().unwrap().to_string();
+
+        batch(format!("{:?}", args.batch), workshop_item, login_string).await
     }
 }
