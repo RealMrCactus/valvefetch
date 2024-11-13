@@ -37,6 +37,15 @@ valvefetch --download 123456789
 valvefetch --path "/path/to/addons" --save
 ```
 
+## Batch Downloads
+
+```
+addon-id
+addon-id
+addon-id
+...
+```
+
 ## Configuration
 
 ValveFetch stores its configuration in `~/.config/valvefetch/config.toml` (Linux/macOS) or `%APPDATA%\ValveFetch\config.toml` (Windows).
