@@ -1,9 +1,7 @@
 use clap::Parser;
 use indicatif::ProgressBar;
-use reqwest::Client;
 use serde_json::Value;
 use std::{fs::read_to_string, path::PathBuf, process::Stdio};
-use scraper::{Html, Selector};
 use tokio::{io::AsyncBufReadExt, process::Command};
 
 #[derive(Parser, Debug)]
@@ -23,7 +21,49 @@ struct Args {
     save: bool,
     /// Path to batch file containing workshop IDs
     #[clap(long, short, value_parser)]
-    batch: Option<PathBuf>,
+    batch: Option<String>,
+}
+
+async fn find_path() -> Result<String, Box<dyn std::error::Error>> {
+    if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("cmd")
+            .arg("/C")
+            .arg("where steamcmd")
+            .stdout(Stdio::piped())
+            .spawn()?;
+
+        if let Some(stdout) = cmd.stdout.take() {
+            let reader = tokio::io::BufReader::new(stdout);
+            let mut lines = reader.lines();
+            
+            // Get the first line (first path found)
+            if let Some(line) = lines.next_line().await.expect("Some fucking shit.") {
+                return Ok(line);
+            }
+        }
+        
+        Err("SteamCMD not found".into())
+    } else if cfg!(target_os = "linux") {
+        let mut cmd = Command::new("sh")
+            .arg("-c")
+            .arg("\"where steamcmd\"")
+            .stdout(Stdio::piped())
+            .spawn()?;
+
+        if let Some(stdout) = cmd.stdout.take() {
+            let reader = tokio::io::BufReader::new(stdout);
+            let mut lines = reader.lines();
+            
+            // Get the first line (first path found)
+            if let Some(line) = lines.next_line().await.expect("Some fucking shit.") {
+                return Ok(line);
+            }
+        }
+        
+        Err("SteamCMD not found".into())
+    } else {
+        Err("Not implemented for this platform".into())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -58,62 +98,19 @@ async fn command(download: bool, shop: WorkshopItem, login: String) {
     if download {
         if ! login.is_empty() {
             Command::new("steamcmd")
-                .arg(format!("+login {} +workshop_download_item {:?} {:?}", login, shop.game_id, shop.item_id))
-                .output().await.unwrap();
+                .arg(format!("+login {} +workshop_download_item {:?} {:?} +quit", login, shop.game_id, shop.item_id));
         } else if login.is_empty() {
             Command::new("steamcmd")
-                .arg(format!("+login {} +workshop_download_item {:?} {:?}", "anonymous", shop.game_id, shop.item_id))
-                .output().await.unwrap();
+                .arg(format!("+login {} +workshop_download_item {:?} {:?} +quit", "anonymous", shop.game_id, shop.item_id));
         } else {
             panic!("Failed to run command.\n    download: {:?}\n    shop: {:?}\n    login: {:?}", download, shop, login)
         }
     }
 }
 
-async fn find_path() -> Result<String, Box<dyn std::error::Error>> {
-    if cfg!(target_os = "windows") {
-        let mut cmd = Command::new("cmd")
-            .arg("/C")
-            .arg("where steamcmd")
-            .stdout(Stdio::piped())
-            .spawn()?;
-
-        if let Some(stdout) = cmd.stdout.take() {
-            let mut reader = tokio::io::BufReader::new(stdout);
-            let mut lines = reader.lines();
-            
-            // Get the first line (first path found)
-            if let Some(line) = lines.next_line().await.expect("Some fucking shit.") {
-                return Ok(line);
-            }
-        }
-        
-        Err("SteamCMD not found".into())
-    } else if cfg!(target_os = "linux") {
-        let mut cmd = Command::new("sh")
-            .arg("-c")
-            .arg("\"where steamcmd\"")
-            .stdout(Stdio::piped())
-            .spawn()?;
-
-        if let Some(stdout) = cmd.stdout.take() {
-            let mut reader = tokio::io::BufReader::new(stdout);
-            let mut lines = reader.lines();
-            
-            // Get the first line (first path found)
-            if let Some(line) = lines.next_line().await.expect("Some fucking shit.") {
-                return Ok(line);
-            }
-        }
-        
-        Err("SteamCMD not found".into())
-    } else {
-        Err("Not implemented for this platform".into())
-    }
-}
-
 async fn batch(file: String, login: String) {
-    let contents: String = read_to_string(file).expect("!! ERROR READING BATCH FILE TO STRING !!").trim().to_string();
+    println!("{}", file);
+    let contents: String = read_to_string(file).expect("Could not read batch file");
     let mut shop = WorkshopItem {
         url: String::new(),
         item_id: 0.into(),
@@ -155,7 +152,7 @@ async fn main() {
         workshop_item.game_id = get_workshop_item(&workshop_item).await;
         println!("Game ID: {}", workshop_item.game_id.expect("Failed to get Game ID"));
 
-        let mut login_string = String::new();
+        let login_string: String;
 
         if ! args.login.is_none() {
             login_string = args.login.as_ref().unwrap().to_string();
@@ -164,22 +161,15 @@ async fn main() {
         }
 
         command(true, workshop_item, login_string).await
-    } else if args.batch.is_some() {
-        let mut workshop_item = WorkshopItem {
-            url: String::new(),
-            item_id: 0.into(),
-            game_id: 0.into(),
-        };
+    } else if args.batch.is_some() {        
+        let login_string: String;
         
-        if let Some(game_id) = get_workshop_item(&workshop_item).await {
-            println!("Game ID: {}", game_id);
-            workshop_item.game_id = Some(game_id);
+        if ! args.login.is_none() {
+            login_string = args.login.as_ref().unwrap().to_string();
         } else {
-            println!("Failed to retrieve game ID.");
+            login_string = "".to_string();
         }
-        
-        let login_string = args.login.as_ref().unwrap().to_string();
 
-        batch(format!("{:?}", args.batch), login_string).await
+        batch(format!("{}", args.batch.unwrap()), login_string).await
     }
 }
