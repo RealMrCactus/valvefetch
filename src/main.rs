@@ -8,7 +8,7 @@ use tokio::{io::AsyncBufReadExt, process::Command};
 #[clap(about = "A SteamCMD wrapper for managing Steam Workshop content")]
 struct Args {
     /// Steam username for authentication
-    #[clap(long, short)]
+    #[clap(long, short, default_value = "anonymous")]
     login: Option<String>,
     /// Workshop item ID or URL to download
     #[clap(long, short)]
@@ -41,25 +41,22 @@ async fn find_path() -> Result<String, Box<dyn std::error::Error>> {
                 return Ok(line);
             }
         }
-        
         Err("SteamCMD not found".into())
     } else if cfg!(target_os = "linux") {
         let mut cmd = Command::new("sh")
             .arg("-c")
-            .arg("\"where steamcmd\"")
+            .arg("\"which steamcmd\"")
             .stdout(Stdio::piped())
             .spawn()?;
 
         if let Some(stdout) = cmd.stdout.take() {
             let reader = tokio::io::BufReader::new(stdout);
             let mut lines = reader.lines();
-            
             // Get the first line (first path found)
             if let Some(line) = lines.next_line().await.expect("Some fucking shit.") {
                 return Ok(line);
             }
         }
-        
         Err("SteamCMD not found".into())
     } else {
         Err("Not implemented for this platform".into())
@@ -77,7 +74,6 @@ async fn get_workshop_item(shop: &WorkshopItem) -> Option<i64> {
     println!("{}", shop.item_id.expect("Item ID received is none @ 41"));
 
     let client = reqwest::Client::new();
-
     let response = client
         .post("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/")
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -85,13 +81,11 @@ async fn get_workshop_item(shop: &WorkshopItem) -> Option<i64> {
         .send()
         .await
         .ok()?;
-
     let json: Value = response.json().await.ok()?;
+    
     println!("{}", json["response"]["publishedfiledetails"][0]["consumer_app_id"]);
-
     json["response"]["publishedfiledetails"][0]["consumer_app_id"]
         .as_i64()
-
 }
 
 async fn command(download: bool, shop: WorkshopItem, login: String) {
@@ -99,9 +93,6 @@ async fn command(download: bool, shop: WorkshopItem, login: String) {
         if ! login.is_empty() {
             Command::new("steamcmd")
                 .arg(format!("+login {} +workshop_download_item {:?} {:?} +quit", login, shop.game_id, shop.item_id));
-        } else if login.is_empty() {
-            Command::new("steamcmd")
-                .arg(format!("+login {} +workshop_download_item {:?} {:?} +quit", "anonymous", shop.game_id, shop.item_id));
         } else {
             panic!("Failed to run command.\n    download: {:?}\n    shop: {:?}\n    login: {:?}", download, shop, login)
         }
@@ -110,6 +101,9 @@ async fn command(download: bool, shop: WorkshopItem, login: String) {
 
 async fn batch(file: String, login: String) {
     println!("{}", file);
+    
+    let lines: u64 = contents.lines().count() as u64;
+    let bar = ProgressBar::new(lines);
     let contents: String = read_to_string(file).expect("Could not read batch file");
     let mut shop = WorkshopItem {
         url: String::new(),
@@ -117,42 +111,35 @@ async fn batch(file: String, login: String) {
         game_id: 0.into(),
     };
 
-    let lines: u64 = contents.lines().count() as u64;
-
-    let bar = ProgressBar::new(lines);
     bar.set_message("Downloading addons");
-
+    
     for line in contents.lines() {
         bar.inc(1);
         shop.item_id = Some(line.parse::<i64>().expect(&format!("Error parsing item ID '{}'", line)));
         command(true, shop.clone(), login.clone()).await;
     }
-
     bar.finish();
 }
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    
     let path_result = find_path().await;
     let steamcmd = format!("{:?}", path_result);
-    
     println!("SteamCMD Path: {:?}", steamcmd);
     
     if args.download.is_some() {
+        let login_string: String;
         let mut workshop_item = WorkshopItem {
             url: String::new(),
             item_id: 0.into(),
             game_id: 0.into(),
         };
-
+        
         workshop_item.item_id = args.download;
-
         workshop_item.game_id = get_workshop_item(&workshop_item).await;
+        
         println!("Game ID: {}", workshop_item.game_id.expect("Failed to get Game ID"));
-
-        let login_string: String;
 
         if ! args.login.is_none() {
             login_string = args.login.as_ref().unwrap().to_string();
