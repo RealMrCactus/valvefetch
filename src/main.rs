@@ -144,7 +144,7 @@ async fn main() {
         if ! args.login.is_none() {
             login_string = args.login.as_ref().unwrap().to_string();
         } else {
-            login_string = "".to_string();
+            login_string = String::from("");
         }
 
         command(true, workshop_item, login_string).await
@@ -154,7 +154,7 @@ async fn main() {
         if ! args.login.is_none() {
             login_string = args.login.as_ref().unwrap().to_string();
         } else {
-            login_string = "".to_string();
+            login_string = String::from("");
         }
 
         batch(format!("{}", args.batch.unwrap()), login_string).await
